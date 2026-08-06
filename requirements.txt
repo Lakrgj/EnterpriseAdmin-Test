@@ -1,0 +1,42 @@
+# ============================================================
+# EnterpriseAdmin 测试项目 - 工具依赖说明
+# 用途：记录接口回归、数据库校验、安全测试辅助所需的工具与 Python 依赖
+# 安装：pip install -r requirements.txt （Python 依赖）
+#       npm install -g newman newman-reporter-htmlextra （Newman 需通过 npm 安装）
+# ============================================================
+
+# ----- 接口回归自动化（Postman CLI 运行集合） -----
+# Newman：Postman 命令行运行器，用于 CI/CD 批量执行接口用例
+# 安装方式：npm install -g newman
+# 版本要求：>= 6.0.0
+newman==6.1.2
+
+# Newman HTML 报告生成器（生成接口测试 HTML 报告）
+# 安装方式：npm install -g newman-reporter-htmlextra
+newman-reporter-htmlextra==1.23.1
+
+# ----- 环境变量与配置管理 -----
+# python-dotenv：从 .env 文件加载测试配置（base_url、账号等），避免硬编码
+python-dotenv==1.0.1
+
+# ----- HTTP 请求与断言（Python 辅助脚本，可选） -----
+# requests：编写 Python 接口测试/数据校验辅助脚本
+requests==2.32.3
+
+# ----- 数据库校验（Python 辅助连接 MySQL） -----
+# PyMySQL：Python 连接 MySQL 执行数据验证脚本
+PyMySQL==1.1.1
+
+# ----- JSON / 数据处理 -----
+# 解析接口响应、处理测试数据
+jsonschema==4.23.0
+
+# ----- 测试报告与数据处理 -----
+# 生成测试统计报告、缺陷数据分析
+openpyxl==3.1.5
+
+# ============================================================
+# 说明：Newman 及其 reporter 本身为 Node.js 工具，这里一并列出
+# 版本以便记录环境一致性。若仅使用 npm 全局安装，可忽略对应行。
+# 核心必装：python-dotenv、requests、PyMySQL
+# ============================================================
