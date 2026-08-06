@@ -1,0 +1,1048 @@
+{
+	"info": {
+		"_postman_id": "a1b2c3d4-0001-4a00-9f00-enterprise01",
+		"name": "EnterpriseAdmin 接口测试集合",
+		"description": "EnterpriseAdmin 企业级后台管理系统接口测试集合。\n\n- 鉴权方式：Bearer Token（JWT）\n- 环境变量：{{base_url}}、{{token}}、{{username}}、{{password}}\n- 登录接口 Tests 脚本会自动提取 token 并写入环境变量，后续请求通过 Pre-request Script 自动注入 Authorization 头。\n- 每个请求均含状态码与业务码断言。",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8080",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "username",
+			"value": "admin",
+			"type": "string"
+		},
+		{
+			"key": "password",
+			"value": "Admin@123",
+			"type": "string"
+		},
+		{
+			"key": "uuid",
+			"value": "test-uuid-0001",
+			"type": "string"
+		},
+		{
+			"key": "userId",
+			"value": "2",
+			"type": "string"
+		},
+		{
+			"key": "roleId",
+			"value": "3",
+			"type": "string"
+		},
+		{
+			"key": "jobId",
+			"value": "1",
+			"type": "string"
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// 集合级 Pre-request 脚本：自动为需要鉴权的请求注入 Token",
+					"// 排除登录类无鉴权接口",
+					"var noAuthPaths = ['/login', '/captchaImage', '/refreshToken'];",
+					"var url = pm.request.url.toString();",
+					"var needAuth = true;",
+					"for (var i = 0; i < noAuthPaths.length; i++) {",
+					"    if (url.indexOf(noAuthPaths[i]) > -1) { needAuth = false; break; }",
+					"}",
+					"if (needAuth) {",
+					"    var token = pm.collectionVariables.get('token') || '';",
+					"    if (!token) { token = pm.environment.get('token') || ''; }",
+					"    if (token) {",
+					"        pm.request.headers.upsert({key: 'Authorization', value: 'Bearer ' + token});",
+					"    }",
+					"}"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// 集合级通用断言：HTTP 状态码为 200",
+					"pm.test('HTTP 状态码为 200', function () {",
+					"    pm.response.to.have.status(200);",
+					"});"
+				]
+			}
+		}
+	],
+	"item": [
+		{
+			"name": "01-登录认证",
+			"description": "登录认证相关接口：登录、获取用户信息、退出、刷新令牌。",
+			"item": [
+				{
+					"name": "用户登录",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"pm.test('HTTP 状态码为 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('业务码 code 为 200', function () {",
+									"    pm.expect(jsonData.code).to.eql(200);",
+									"});",
+									"pm.test('返回 token 非空', function () {",
+									"    var token = jsonData.token || (jsonData.data && jsonData.data.token);",
+									"    pm.expect(token).to.not.be.empty;",
+									"});",
+									"// 自动提取并保存 token，供后续请求使用",
+									"var token = jsonData.token || (jsonData.data && jsonData.data.token);",
+									"if (token) {",
+									"    pm.collectionVariables.set('token', token);",
+									"    pm.environment.set('token', token);",
+									"    console.log('Token 已保存到环境变量');",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"{{username}}\",\n    \"password\": \"{{password}}\",\n    \"code\": \"1234\",\n    \"uuid\": \"{{uuid}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/login",
+							"host": ["{{base_url}}"],
+							"path": ["login"]
+						},
+						"description": "账号密码登录，成功后返回 JWT Token。Tests 脚本自动将 token 写入环境变量。"
+					}
+				},
+				{
+					"name": "获取当前用户信息",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"pm.test('HTTP 状态码为 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('业务码 code 为 200', function () {",
+									"    pm.expect(jsonData.code).to.eql(200);",
+									"});",
+									"pm.test('返回用户名非空', function () {",
+									"    var user = jsonData.user || (jsonData.data && jsonData.data.user);",
+									"    pm.expect(user).to.have.property('userName');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/getInfo",
+							"host": ["{{base_url}}"],
+							"path": ["getInfo"]
+						},
+						"description": "获取当前登录用户信息、角色与权限集合。"
+					}
+				},
+				{
+					"name": "退出登录",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"pm.test('HTTP 状态码为 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('业务码 code 为 200', function () {",
+									"    pm.expect(jsonData.code).to.eql(200);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/logout",
+							"host": ["{{base_url}}"],
+							"path": ["logout"]
+						},
+						"description": "退出登录，服务端使当前 token 失效。"
+					}
+				},
+				{
+					"name": "刷新令牌",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"pm.test('HTTP 状态码为 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('刷新令牌成功或返回明确错误', function () {",
+									"    pm.expect([200, 500]).to.include(jsonData.code);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"refreshToken\": \"{{token}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/refreshToken",
+							"host": ["{{base_url}}"],
+							"path": ["refreshToken"]
+						},
+						"description": "使用刷新令牌换取新的 access token。"
+					}
+				},
+				{
+					"name": "无Token访问(应401)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// 故意移除鉴权头，验证未授权访问被拦截",
+									"pm.request.headers.remove('Authorization');"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('未携带Token应返回401', function () {",
+									"    var code = pm.response.json().code || 0;",
+									"    pm.expect([401, 403]).to.include(code).or.to.include(pm.response.code);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/system/user/list?pageNum=1&pageSize=10",
+							"host": ["{{base_url}}"],
+							"path": ["system", "user", "list"],
+							"query": [
+								{"key": "pageNum", "value": "1"},
+								{"key": "pageSize", "value": "10"}
+							]
+						},
+						"description": "不携带 Token 访问受保护接口，预期返回 401 未授权。"
+					}
+				}
+			]
+		},
+		{
+			"name": "02-用户管理",
+			"description": "用户管理 CRUD 接口：列表、新增、修改、删除、重置密码、状态变更。",
+			"item": [
+				{
+					"name": "用户列表查询",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"pm.test('HTTP 状态码为 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('业务码 code 为 200', function () {",
+									"    pm.expect(jsonData.code).to.eql(200);",
+									"});",
+									"pm.test('返回分页数据 total', function () {",
+									"    var total = jsonData.total || (jsonData.data && jsonData.data.total);",
+									"    pm.expect(total).to.not.be.null;",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/system/user/list?pageNum=1&pageSize=10",
+							"host": ["{{base_url}}"],
+							"path": ["system", "user", "list"],
+							"query": [
+								{"key": "pageNum", "value": "1"},
+								{"key": "pageSize", "value": "10"}
+							]
+						},
+						"description": "分页查询用户列表。"
+					}
+				},
+				{
+					"name": "新增用户",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"pm.test('HTTP 状态码为 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('新增用户业务码为 200', function () {",
+									"    pm.expect(jsonData.code).to.eql(200);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"deptId\": 100,\n    \"userName\": \"lisi\",\n    \"nickName\": \"李四\",\n    \"password\": \"User@1234\",\n    \"phonenumber\": \"13800138000\",\n    \"email\": \"lisi@example.com\",\n    \"sex\": \"0\",\n    \"status\": \"0\",\n    \"roleIds\": [3],\n    \"postIds\": [1]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/system/user",
+							"host": ["{{base_url}}"],
+							"path": ["system", "user"]
+						},
+						"description": "新增用户，含部门、角色、岗位关联。"
+					}
+				},
+				{
+					"name": "修改用户",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"pm.test('HTTP 状态码为 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('修改用户业务码为 200', function () {",
+									"    pm.expect(jsonData.code).to.eql(200);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"userId\": {{userId}},\n    \"nickName\": \"李四-改\",\n    \"phonenumber\": \"13800138001\",\n    \"email\": \"lisi@example.com\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/system/user",
+							"host": ["{{base_url}}"],
+							"path": ["system", "user"]
+						},
+						"description": "修改用户基本信息。"
+					}
+				},
+				{
+					"name": "删除用户",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"pm.test('HTTP 状态码为 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('删除用户业务码为 200', function () {",
+									"    pm.expect(jsonData.code).to.eql(200);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/system/user/{{userId}}",
+							"host": ["{{base_url}}"],
+							"path": ["system", "user", "{{userId}}"]
+						},
+						"description": "根据 userId 删除用户。"
+					}
+				},
+				{
+					"name": "重置用户密码",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"pm.test('HTTP 状态码为 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('重置密码业务码为 200', function () {",
+									"    pm.expect(jsonData.code).to.eql(200);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"userId\": {{userId}},\n    \"password\": \"Admin@123\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/system/user/resetPwd",
+							"host": ["{{base_url}}"],
+							"path": ["system", "user", "resetPwd"]
+						},
+						"description": "管理员重置指定用户密码为默认值。"
+					}
+				},
+				{
+					"name": "修改用户状态",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"pm.test('HTTP 状态码为 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('状态变更业务码为 200', function () {",
+									"    pm.expect(jsonData.code).to.eql(200);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"userId\": {{userId}},\n    \"status\": \"1\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/system/user/changeStatus",
+							"host": ["{{base_url}}"],
+							"path": ["system", "user", "changeStatus"]
+						},
+						"description": "启用(0)/禁用(1)用户状态。"
+					}
+				}
+			]
+		},
+		{
+			"name": "03-角色管理",
+			"description": "角色管理与权限分配接口：列表、新增、修改、删除、数据权限、菜单树。",
+			"item": [
+				{
+					"name": "角色列表查询",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"pm.test('HTTP 状态码为 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('业务码 code 为 200', function () {",
+									"    pm.expect(jsonData.code).to.eql(200);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/system/role/list?pageNum=1&pageSize=10",
+							"host": ["{{base_url}}"],
+							"path": ["system", "role", "list"],
+							"query": [
+								{"key": "pageNum", "value": "1"},
+								{"key": "pageSize", "value": "10"}
+							]
+						},
+						"description": "分页查询角色列表。"
+					}
+				},
+				{
+					"name": "新增角色",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"pm.test('HTTP 状态码为 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('新增角色业务码为 200', function () {",
+									"    pm.expect(jsonData.code).to.eql(200);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"roleName\": \"测试角色\",\n    \"roleKey\": \"test_role\",\n    \"roleSort\": 1,\n    \"status\": \"0\",\n    \"menuIds\": [1, 100, 1001],\n    \"menuCheckStrictly\": true,\n    \"deptCheckStrictly\": true\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/system/role",
+							"host": ["{{base_url}}"],
+							"path": ["system", "role"]
+						},
+						"description": "新增角色并分配菜单权限。"
+					}
+				},
+				{
+					"name": "修改角色",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"pm.test('HTTP 状态码为 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('修改角色业务码为 200', function () {",
+									"    pm.expect(jsonData.code).to.eql(200);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"roleId\": {{roleId}},\n    \"roleName\": \"测试角色-改\",\n    \"roleKey\": \"test_role\",\n    \"roleSort\": 2,\n    \"status\": \"0\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/system/role",
+							"host": ["{{base_url}}"],
+							"path": ["system", "role"]
+						},
+						"description": "修改角色基本信息。"
+					}
+				},
+				{
+					"name": "删除角色",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"pm.test('HTTP 状态码为 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('删除角色业务码为 200', function () {",
+									"    pm.expect(jsonData.code).to.eql(200);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/system/role/{{roleId}}",
+							"host": ["{{base_url}}"],
+							"path": ["system", "role", "{{roleId}}"]
+						},
+						"description": "根据 roleId 删除角色。"
+					}
+				},
+				{
+					"name": "角色数据权限分配",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"pm.test('HTTP 状态码为 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('数据权限业务码为 200', function () {",
+									"    pm.expect(jsonData.code).to.eql(200);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"roleId\": {{roleId}},\n    \"dataScope\": \"2\",\n    \"deptIds\": [100, 101, 102]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/system/role/dataScope",
+							"host": ["{{base_url}}"],
+							"path": ["system", "role", "dataScope"]
+						},
+						"description": "设置角色数据权限范围（自定义部门）。"
+					}
+				},
+				{
+					"name": "角色菜单树(含已选)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"pm.test('HTTP 状态码为 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('业务码 code 为 200', function () {",
+									"    pm.expect(jsonData.code).to.eql(200);",
+									"});",
+									"pm.test('返回菜单树结构', function () {",
+									"    pm.expect(jsonData).to.have.property('menus');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/system/menu/roleMenuTreeselect/{{roleId}}",
+							"host": ["{{base_url}}"],
+							"path": ["system", "menu", "roleMenuTreeselect", "{{roleId}}"]
+						},
+						"description": "获取菜单树及角色已选菜单ID，用于权限回显。"
+					}
+				}
+			]
+		},
+		{
+			"name": "04-定时任务",
+			"description": "定时任务管理接口：列表、新增、启停、立即执行。",
+			"item": [
+				{
+					"name": "定时任务列表",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"pm.test('HTTP 状态码为 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('业务码 code 为 200', function () {",
+									"    pm.expect(jsonData.code).to.eql(200);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/monitor/job/list?pageNum=1&pageSize=10",
+							"host": ["{{base_url}}"],
+							"path": ["monitor", "job", "list"],
+							"query": [
+								{"key": "pageNum", "value": "1"},
+								{"key": "pageSize", "value": "10"}
+							]
+						},
+						"description": "分页查询定时任务列表。"
+					}
+				},
+				{
+					"name": "新增定时任务",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"pm.test('HTTP 状态码为 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('新增任务业务码为 200', function () {",
+									"    pm.expect(jsonData.code).to.eql(200);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"jobName\": \"接口测试任务\",\n    \"jobGroup\": \"DEFAULT\",\n    \"invokeTarget\": \"testTask.run()\",\n    \"cronExpression\": \"0/10 * * * * ?\",\n    \"misfirePolicy\": \"3\",\n    \"concurrent\": \"1\",\n    \"status\": \"0\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/monitor/job",
+							"host": ["{{base_url}}"],
+							"path": ["monitor", "job"]
+						},
+						"description": "新增定时任务，指定调用目标与 Cron 表达式。"
+					}
+				},
+				{
+					"name": "启停定时任务",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"pm.test('HTTP 状态码为 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('启停任务业务码为 200', function () {",
+									"    pm.expect(jsonData.code).to.eql(200);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"jobId\": {{jobId}},\n    \"status\": \"0\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/monitor/job/changeStatus",
+							"host": ["{{base_url}}"],
+							"path": ["monitor", "job", "changeStatus"]
+						},
+						"description": "启动(0)/暂停(1)定时任务。"
+					}
+				},
+				{
+					"name": "立即执行一次",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"pm.test('HTTP 状态码为 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('执行任务业务码为 200', function () {",
+									"    pm.expect(jsonData.code).to.eql(200);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"jobId\": {{jobId}}\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/monitor/job/run",
+							"host": ["{{base_url}}"],
+							"path": ["monitor", "job", "run"]
+						},
+						"description": "手动触发任务执行一次，预期日志表新增记录。"
+					}
+				}
+			]
+		},
+		{
+			"name": "05-文件上传",
+			"description": "文件上传接口：合规上传与非法类型上传（安全校验）。",
+			"item": [
+				{
+					"name": "上传合规图片",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"pm.test('HTTP 状态码为 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('上传成功业务码为 200', function () {",
+									"    pm.expect(jsonData.code).to.eql(200);",
+									"});",
+									"pm.test('返回文件 url', function () {",
+									"    var url = jsonData.url || (jsonData.data && jsonData.data.url) || jsonData.fileName;",
+									"    pm.expect(url).to.not.be.empty;",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": "postman-cloud:///1f2e3d4c-0001-4a00-9f00-samplejpg",
+									"description": "选择一张合规 jpg/png 图片（<10MB）"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/common/upload",
+							"host": ["{{base_url}}"],
+							"path": ["common", "upload"]
+						},
+						"description": "上传合规图片文件，预期返回访问 url。导入后在 Postman 中重新选择本地文件。"
+					}
+				},
+				{
+					"name": "上传非法类型(应拒绝)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"pm.test('HTTP 状态码为 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test('非法文件应被拒绝(业务码非200)', function () {",
+									"    pm.expect(jsonData.code).to.not.eql(200);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": "postman-cloud:///1f2e3d4c-0002-4a00-9f00-sampleexe",
+									"description": "选择一个 exe 文件，验证类型校验"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/common/upload",
+							"host": ["{{base_url}}"],
+							"path": ["common", "upload"]
+						},
+						"description": "上传 exe 文件，预期被服务端类型校验拦截，返回错误。"
+					}
+				}
+			]
+		}
+	]
+}
